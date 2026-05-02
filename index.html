@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dream Reveal Letter</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-live="polite">
+      <section class="screen setup-screen is-active" data-screen="setup">
+        <form class="quick-form" id="quickForm">
+          <p class="eyebrow">Admin Panel</p>
+          <h1>Customize this dream reveal</h1>
+
+          <label class="message-label" for="letterMessageInput">
+            1. Dream Letter Message
+          </label>
+          <textarea id="letterMessageInput" autocomplete="off">My Love,
+
+I always knew this dream was waiting for you.
+Every late night, every small effort, and every silent prayer has brought you here.
+This result is proof that your heart never gave up.
+Today your dream begins to glow, and I am so proud of you.
+
+Tumhari ❤️</textarea>
+
+          <label class="message-label" for="dreamPhotoInput">
+            2. Scratch Dream Photo
+          </label>
+          <div class="upload-box">
+            <input id="dreamPhotoInput" type="file" accept="image/*" />
+            <p id="photoStatus">Default dream photo is selected.</p>
+          </div>
+
+          <label class="message-label" for="finalMessageInput">
+            3. Background Music
+          </label>
+          <div class="upload-box">
+            <input id="musicInput" type="file" accept="audio/*" />
+            <p id="musicStatus">Default romantic music is selected.</p>
+          </div>
+
+          <label class="message-label" for="finalMessageInput">
+            4. Final Message / Instructions
+          </label>
+          <textarea id="finalMessageInput" autocomplete="off">I knew you would make it.
+This is only the beginning.
+I’m so proud of you.
+I’ll always be with you ❤️</textarea>
+
+          <div class="admin-actions">
+            <button class="primary-button" type="submit">
+              <span>🔗</span>
+              <span>Generate Link</span>
+            </button>
+            <button class="secondary-button" id="previewButton" type="button">Preview Reveal</button>
+          </div>
+
+          <div class="link-box" id="linkBox" hidden>
+            <p>Your reveal link is ready:</p>
+            <a id="generatedLink" href="#" target="_blank" rel="noreferrer"></a>
+          </div>
+        </form>
+      </section>
+
+      <section class="screen letter-screen" data-screen="letter" aria-hidden="true">
+        <div class="letter-card" aria-label="Romantic handwritten letter">
+          <img class="letter-reference" src="/assets/letter-bg.jpg" alt="A romantic handwritten love letter reference" />
+          <div class="letter-glow"></div>
+          <article class="generated-letter">
+            <div class="letter-art top-left">❤</div>
+            <div class="letter-art top-right">☾ ✦</div>
+            <h1 id="letterName">My Love</h1>
+            <div class="letter-rule"></div>
+            <div class="letter-message" id="letterMessage"></div>
+          </article>
+        </div>
+
+        <button class="future-button" id="startButton" type="button">
+          <span>💫</span>
+          <span>See Your Future</span>
+        </button>
+      </section>
+
+      <section class="screen countdown-screen" data-screen="countdown" aria-hidden="true">
+        <div class="countdown-shell">
+          <p class="countdown-kicker">Your dream is almost here</p>
+          <div class="countdown-number" id="countdownNumber">5</div>
+        </div>
+      </section>
+
+      <section class="screen scratch-screen" data-screen="scratch" aria-hidden="true">
+        <div class="scratch-copy soft-enter">
+          <p class="eyebrow">Dream Reveal</p>
+          <h1>Uncover the future you were always meant for</h1>
+        </div>
+
+        <div class="scratch-card soft-enter" id="scratchCard">
+          <img src="/assets/future-dream.jpg" alt="Dream future reveal" id="dreamImage" />
+          <canvas id="scratchCanvas" aria-label="Scratch card layer"></canvas>
+          <div class="scratch-shine" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <section class="screen final-screen" data-screen="final" aria-hidden="true">
+        <div class="final-backdrop"></div>
+        <div class="final-message">
+          <p class="typed-line" data-text="I knew you would make it."></p>
+          <p class="typed-line" data-text="This is only the beginning."></p>
+          <p class="typed-line" data-text="I’m so proud of you."></p>
+          <p class="typed-line" data-text="I’ll always be with you ❤️"></p>
+        </div>
+      </section>
+    </main>
+
+    <audio id="bgMusic" src="/assets/bg-music.mp3" preload="auto" loop></audio>
+    <script src="/script.js"></script>
+  </body>
+</html>

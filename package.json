@@ -1,0 +1,15 @@
+{
+  "name": "dream-reveal-letter",
+  "version": "1.0.0",
+  "description": "Full-stack personalized dream reveal letter app with admin panel, uploads, dynamic links, and JSON persistence.",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node --check server.mjs && node --check script.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}
