@@ -20,7 +20,13 @@ Dream Reveal Letter is a full-stack web application for creating personalized re
 4. Upload custom background music, or keep the default.
 5. Add the final reveal message or instructions.
 6. Click **Generate Link**.
-7. Share the generated `/r/{id}` link.
+7. Share the generated `/reveal/{id}` link.
+
+## Routes
+
+- `/admin` opens the admin panel.
+- `/` opens the default public reveal experience.
+- `/reveal/{id}` opens a saved recipient reveal page without the admin form.
 
 Each generated link loads its saved data from `database/reveals.json`, so entries persist across server restarts.
 

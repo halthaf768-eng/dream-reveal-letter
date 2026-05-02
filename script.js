@@ -6,6 +6,23 @@ const screens = {
   final: document.querySelector('[data-screen="final"]'),
 };
 
+const defaultReveal = {
+  letterMessage: `My Love,
+
+I always knew this dream was waiting for you.
+Every late night, every small effort, and every silent prayer has brought you here.
+This result is proof that your heart never gave up.
+Today your dream begins to glow, and I am so proud of you.
+
+Tumhari ❤️`,
+  dreamPhoto: "",
+  music: "",
+  finalMessage: `I knew you would make it.
+This is only the beginning.
+I’m so proud of you.
+I’ll always be with you ❤️`,
+};
+
 const quickForm = document.getElementById("quickForm");
 const letterMessageInput = document.getElementById("letterMessageInput");
 const dreamPhotoInput = document.getElementById("dreamPhotoInput");
@@ -141,7 +158,7 @@ async function createRevealLink() {
 }
 
 async function loadSharedReveal() {
-  const match = window.location.pathname.match(/^\/r\/([a-zA-Z0-9_-]+)$/);
+  const match = window.location.pathname.match(/^\/reveal\/([a-zA-Z0-9_-]+)$/);
   if (!match) return false;
 
   const response = await fetch(`/api/reveals/${match[1]}`);
@@ -149,8 +166,39 @@ async function loadSharedReveal() {
 
   const data = await response.json();
   applyRevealData(data);
-  showScreen("letter");
   return true;
+}
+
+function removeAdminPanel() {
+  screens.setup?.remove();
+  delete screens.setup;
+}
+
+function startPublicReveal() {
+  removeAdminPanel();
+  showScreen("letter");
+}
+
+async function bootApp() {
+  if (window.location.pathname === "/admin") {
+    showScreen("setup");
+    return;
+  }
+
+  if (window.location.pathname === "/") {
+    applyRevealData(defaultReveal);
+    startPublicReveal();
+    return;
+  }
+
+  const loaded = await loadSharedReveal();
+  if (loaded) {
+    startPublicReveal();
+    return;
+  }
+
+  applyRevealData(defaultReveal);
+  startPublicReveal();
 }
 
 function showScreen(name) {
@@ -401,4 +449,4 @@ window.addEventListener("resize", () => {
   }
 });
 
-loadSharedReveal();
+bootApp();

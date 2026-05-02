@@ -101,7 +101,7 @@ const server = createServer(async (request, response) => {
       const db = await readDb();
       db[id] = cleanRevealPayload(payload);
       await writeDb(db);
-      sendJson(response, 201, { id, url: `/r/${id}` });
+      sendJson(response, 201, { id, url: `/reveal/${id}` });
       return;
     }
 
@@ -116,12 +116,23 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === "GET" && url.pathname.startsWith("/r/") && extname(url.pathname)) {
+    if (request.method === "GET" && url.pathname.startsWith("/reveal/") && extname(url.pathname)) {
       await serveFile(response, `/${url.pathname.split("/").slice(2).join("/")}`);
       return;
     }
 
+    if (request.method === "GET" && url.pathname.startsWith("/reveal/")) {
+      await serveFile(response, "/index.html");
+      return;
+    }
+
     if (request.method === "GET" && url.pathname.startsWith("/r/")) {
+      response.writeHead(302, { Location: url.pathname.replace(/^\/r\//, "/reveal/") });
+      response.end();
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === "/admin") {
       await serveFile(response, "/index.html");
       return;
     }
