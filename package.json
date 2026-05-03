@@ -1,7 +1,7 @@
 {
   "name": "dream-reveal-letter",
   "version": "1.0.0",
-  "description": "Full-stack personalized dream reveal letter app with admin panel, uploads, dynamic links, and JSON persistence.",
+  "description": "Full-stack personalized dream reveal letter app with admin panel, uploads, dynamic links, and Supabase PostgreSQL persistence.",
   "type": "module",
   "main": "server.mjs",
   "scripts": {
@@ -11,5 +11,8 @@
   "engines": {
     "node": ">=20"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.1"
+  }
 }

@@ -1,13 +1,11 @@
 import { createServer } from "node:http";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 
 const root = fileURLToPath(new URL(".", import.meta.url));
-const dbDir = join(root, "database");
-const dbPath = join(dbDir, "reveals.json");
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "0.0.0.0";
 const maxBodyBytes = 24 * 1024 * 1024;
@@ -23,21 +21,25 @@ const mimeTypes = {
   ".json": "application/json; charset=utf-8",
 };
 
-async function ensureDb() {
-  await mkdir(dbDir, { recursive: true });
-  if (!existsSync(dbPath)) {
-    await writeFile(dbPath, "{}\n", "utf8");
+let supabaseClient;
+
+function getSupabase() {
+  if (supabaseClient) return supabaseClient;
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
   }
-}
 
-async function readDb() {
-  await ensureDb();
-  return JSON.parse(await readFile(dbPath, "utf8"));
-}
-
-async function writeDb(data) {
-  await ensureDb();
-  await writeFile(dbPath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  supabaseClient = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+  return supabaseClient;
 }
 
 function sendJson(response, status, data) {
@@ -61,14 +63,94 @@ function readBody(request) {
   });
 }
 
-function cleanRevealPayload(payload) {
+function parseJsonBody(rawBody) {
+  if (!rawBody) return {};
+  try {
+    return JSON.parse(rawBody);
+  } catch {
+    const error = new Error("Invalid JSON request body.");
+    error.status = 400;
+    throw error;
+  }
+}
+
+function createSlug() {
+  return crypto.randomBytes(6).toString("base64url");
+}
+
+function splitLetterMessage(message) {
+  const lines = String(message || "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const [customerName = "My Love"] = lines;
+  return customerName.replace(/,$/, "");
+}
+
+function pickValue(payload, keys, fallback = "") {
+  for (const key of keys) {
+    if (payload[key] !== undefined) return payload[key];
+  }
+  return fallback;
+}
+
+function cleanRevealPayload(payload, existing = {}) {
+  const letterMessage = String(pickValue(payload, ["letterMessage", "letter_message"], existing.letter_message || ""));
+  const finalMessage = String(pickValue(payload, ["finalMessage", "final_message"], existing.final_message || ""));
+  const futureImageUrl = String(
+    pickValue(payload, ["dreamPhoto", "futureImageUrl", "future_image_url"], existing.future_image_url || ""),
+  );
+  const backgroundMusicUrl = String(
+    pickValue(payload, ["music", "backgroundMusicUrl", "background_music_url"], existing.background_music_url || ""),
+  );
+
   return {
-    letterMessage: String(payload.letterMessage || ""),
-    dreamPhoto: String(payload.dreamPhoto || ""),
-    music: String(payload.music || ""),
-    finalMessage: String(payload.finalMessage || ""),
-    createdAt: new Date().toISOString(),
+    slug: existing.slug || String(payload.slug || createSlug()),
+    customer_name: String(
+      pickValue(payload, ["customerName", "customer_name"], existing.customer_name || splitLetterMessage(letterMessage)),
+    ),
+    customer_details: pickValue(payload, ["customerDetails", "customer_details"], existing.customer_details || {}),
+    letter_message: letterMessage,
+    final_message: finalMessage,
+    future_image_url: futureImageUrl,
+    background_music_url: backgroundMusicUrl,
+    destination_result_data: pickValue(
+      payload,
+      ["destinationResultData", "destination_result_data"],
+      existing.destination_result_data || {},
+    ),
+    admin_created: pickValue(payload, ["adminCreated", "admin_created"], existing.admin_created ?? true),
   };
+}
+
+function toClientReveal(row) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    customerName: row.customer_name,
+    customerDetails: row.customer_details || {},
+    letterMessage: row.letter_message || "",
+    dreamPhoto: row.future_image_url || "",
+    futureImageUrl: row.future_image_url || "",
+    music: row.background_music_url || "",
+    backgroundMusicUrl: row.background_music_url || "",
+    finalMessage: row.final_message || "",
+    destinationResultData: row.destination_result_data || {},
+    adminCreated: row.admin_created,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function getRevealBySlug(slug) {
+  const { data, error } = await getSupabase()
+    .from("reveal_entries")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
 }
 
 async function serveFile(response, pathname) {
@@ -91,28 +173,94 @@ async function serveFile(response, pathname) {
   }
 }
 
+async function handleApi(request, response, url) {
+  if (request.method === "POST" && url.pathname === "/api/reveals") {
+    const payload = parseJsonBody(await readBody(request));
+    const reveal = cleanRevealPayload(payload);
+    const { data, error } = await getSupabase().from("reveal_entries").insert(reveal).select("*").single();
+
+    if (error) throw error;
+
+    sendJson(response, 201, {
+      ...toClientReveal(data),
+      url: `/reveal/${data.slug}`,
+    });
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/reveals") {
+    const { data, error } = await getSupabase()
+      .from("reveal_entries")
+      .select("id, slug, customer_name, letter_message, future_image_url, destination_result_data, admin_created, created_at, updated_at")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    sendJson(response, 200, { reveals: data.map(toClientReveal) });
+    return true;
+  }
+
+  if (url.pathname.startsWith("/api/reveals/")) {
+    const slug = url.pathname.split("/").pop();
+    if (!slug) {
+      sendJson(response, 400, { error: "Missing reveal slug." });
+      return true;
+    }
+
+    if (request.method === "GET") {
+      const row = await getRevealBySlug(slug);
+      if (!row) {
+        sendJson(response, 404, { error: "Reveal not found." });
+        return true;
+      }
+
+      sendJson(response, 200, toClientReveal(row));
+      return true;
+    }
+
+    if (request.method === "PUT" || request.method === "PATCH") {
+      const existing = await getRevealBySlug(slug);
+      if (!existing) {
+        sendJson(response, 404, { error: "Reveal not found." });
+        return true;
+      }
+
+      const payload = parseJsonBody(await readBody(request));
+      const reveal = cleanRevealPayload(payload, existing);
+      const { data, error } = await getSupabase()
+        .from("reveal_entries")
+        .update(reveal)
+        .eq("slug", slug)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      sendJson(response, 200, toClientReveal(data));
+      return true;
+    }
+
+    if (request.method === "DELETE") {
+      const { error } = await getSupabase().from("reveal_entries").delete().eq("slug", slug);
+      if (error) throw error;
+
+      sendJson(response, 200, { ok: true });
+      return true;
+    }
+  }
+
+  return false;
+}
+
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || "/", `http://${request.headers.host}`);
 
   try {
-    if (request.method === "POST" && url.pathname === "/api/reveals") {
-      const payload = JSON.parse(await readBody(request));
-      const id = crypto.randomBytes(6).toString("base64url");
-      const db = await readDb();
-      db[id] = cleanRevealPayload(payload);
-      await writeDb(db);
-      sendJson(response, 201, { id, url: `/reveal/${id}` });
-      return;
-    }
-
-    if (request.method === "GET" && url.pathname.startsWith("/api/reveals/")) {
-      const id = url.pathname.split("/").pop();
-      const db = await readDb();
-      if (!id || !db[id]) {
-        sendJson(response, 404, { error: "Reveal not found" });
-        return;
+    if (url.pathname.startsWith("/api/")) {
+      const handled = await handleApi(request, response, url);
+      if (!handled) {
+        sendJson(response, 404, { error: "API route not found." });
       }
-      sendJson(response, 200, db[id]);
       return;
     }
 
@@ -145,11 +293,14 @@ const server = createServer(async (request, response) => {
     response.writeHead(405);
     response.end("Method not allowed");
   } catch (error) {
-    sendJson(response, 500, { error: error.message || "Server error" });
+    const status = error.status || 500;
+    sendJson(response, status, {
+      error: status === 500 ? "Server error." : error.message,
+      detail: status === 500 ? error.message : undefined,
+    });
   }
 });
 
-await ensureDb();
 server.listen(port, host, () => {
   console.log(`Dream Reveal Letter running at http://${host}:${port}`);
 });

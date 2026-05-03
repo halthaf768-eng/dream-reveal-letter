@@ -395,7 +395,7 @@ quickForm.addEventListener("submit", async (event) => {
     generatedLink.href = url;
     generatedLink.textContent = url;
   } catch (error) {
-    generatedLink.textContent = "Start the local backend server first, then generate the link again.";
+    generatedLink.textContent = "Could not save the reveal. Check backend and Supabase environment variables.";
   }
 });
 
