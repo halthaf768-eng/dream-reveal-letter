@@ -14,9 +14,10 @@ Dream Reveal Letter is a full-stack web application for creating personalized re
 
 ## Routes
 
-- `/admin` opens the admin panel.
+- `/admin?key=YOUR_ADMIN_KEY` opens the protected admin panel.
 - `/` opens the default public reveal experience.
 - `/reveal/{slug}` opens a saved recipient reveal page without the admin form.
+- `/ping` returns `ok` for uptime checks.
 
 The admin UI lives in `admin.html` and `admin.js`. The public reveal UI lives in `index.html` and `script.js`, so recipient links never render the admin form or upload controls.
 
@@ -41,11 +42,12 @@ PORT=4173
 HOST=0.0.0.0
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+ADMIN_KEY=change-this-admin-secret
 ```
 
 ## How It Works
 
-1. Open `/admin`.
+1. Open `/admin?key=YOUR_ADMIN_KEY`.
 2. Paste the full dream letter message.
 3. Upload a dream photo for the scratch reveal, or keep the default.
 4. Upload custom background music, or keep the default.
@@ -73,7 +75,7 @@ npm start
 Then open:
 
 ```text
-http://127.0.0.1:4173/admin
+http://127.0.0.1:4173/admin?key=change-this-admin-secret
 ```
 
 For local-only binding:
@@ -97,6 +99,7 @@ Add these Render environment variables:
 ```text
 SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
+ADMIN_KEY
 ```
 
 Render provides `PORT` automatically. Keep `HOST=0.0.0.0` or omit it.

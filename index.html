@@ -8,10 +8,10 @@
   </head>
   <body>
     <main class="app public-app" aria-live="polite">
-      <section class="screen loader-screen is-active" data-screen="loader">
+      <section class="screen loader-screen is-active" id="loader" data-screen="loader">
         <div class="loader-card">
-          <p class="loader-icon">✨</p>
-          <h1>Preparing your surprise…</h1>
+          <p class="loader-icon">💌</p>
+          <h1>Someone left you something special...</h1>
         </div>
       </section>
 
@@ -56,7 +56,7 @@
         </div>
 
         <div class="scratch-card soft-enter" id="scratchCard">
-          <img src="/assets/future-dream.jpg" alt="Dream future reveal" id="dreamImage" loading="lazy" />
+          <img alt="Dream future reveal" id="dreamImage" loading="lazy" />
           <canvas id="scratchCanvas" aria-label="Scratch card layer"></canvas>
           <div class="scratch-shine" aria-hidden="true"></div>
         </div>
@@ -70,10 +70,11 @@
           <p class="typed-line" data-text="I’m so proud of you."></p>
           <p class="typed-line" data-text="I’ll always be with you ❤️"></p>
         </div>
+        <button class="share-button" type="button" onclick="shareReveal()">Share this surprise 💌</button>
       </section>
     </main>
 
-    <audio id="bgMusic" src="/assets/bg-music.mp3" preload="none" loop></audio>
+    <audio id="bgMusic" preload="none" loop></audio>
     <script src="/script.js"></script>
   </body>
 </html>

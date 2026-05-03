@@ -248,7 +248,7 @@ async function handleApi(request, response, url) {
     return true;
   }
 
-  if (url.pathname.startsWith("/api/reveals/")) {
+  if (url.pathname.startsWith("/api/reveal/") || url.pathname.startsWith("/api/reveals/")) {
     const slug = url.pathname.split("/").pop();
     if (!slug) {
       sendJson(response, 400, { error: "Missing reveal slug." });
@@ -312,6 +312,12 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    if (request.method === "GET" && url.pathname === "/ping") {
+      response.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("ok");
+      return;
+    }
+
     if (request.method === "GET" && url.pathname.startsWith("/reveal/") && extname(url.pathname)) {
       await serveFile(response, `/${url.pathname.split("/").slice(2).join("/")}`);
       return;
@@ -329,6 +335,15 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && url.pathname === "/admin") {
+      const adminKey = process.env.ADMIN_KEY;
+      const providedKey = url.searchParams.get("key");
+
+      if (!adminKey || !providedKey || providedKey !== adminKey) {
+        response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+        response.end("Unauthorized");
+        return;
+      }
+
       await serveFile(response, "/admin.html");
       return;
     }

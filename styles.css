@@ -32,6 +32,9 @@ body {
 button {
   border: 0;
   font: inherit;
+  font-size: 16px;
+  min-height: 48px;
+  padding: 12px 20px;
 }
 
 input,
@@ -526,6 +529,7 @@ textarea {
     linear-gradient(rgba(39, 15, 24, 0.4), rgba(39, 15, 24, 0.66)),
     url("/assets/future-dream.jpg") center / cover;
   color: white;
+  gap: 24px;
   justify-items: center;
   text-align: center;
 }
@@ -544,6 +548,15 @@ textarea {
   gap: 14px;
   max-width: min(88vw, 560px);
   padding: 18px 0;
+}
+
+.share-button {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+  color: var(--rose-deep);
+  cursor: pointer;
+  font-weight: 800;
 }
 
 .typed-line {

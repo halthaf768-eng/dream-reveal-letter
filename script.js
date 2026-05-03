@@ -1,5 +1,5 @@
 const screens = {
-  loader: document.querySelector('[data-screen="loader"]'),
+  loader: document.getElementById("loader"),
   error: document.querySelector('[data-screen="error"]'),
   letter: document.querySelector('[data-screen="letter"]'),
   countdown: document.querySelector('[data-screen="countdown"]'),
@@ -146,15 +146,20 @@ async function initRevealPage() {
   }
 
   try {
-    const data = await loadRevealBySlug(match[1]);
+    const data = await new Promise((resolve, reject) => {
+      window.setTimeout(() => {
+        loadRevealBySlug(match[1]).then(resolve).catch(reject);
+      }, 1500);
+    });
     applyRevealData(data);
     showScreen("letter");
   } catch (error) {
-    showError("Reveal not found", error.message || "This surprise link is unavailable.");
+    showError("This surprise is no longer available", error.message || "This surprise link is unavailable.");
   }
 }
 
 function initHomePage() {
+  showScreen("loader");
   applyRevealData(defaultReveal);
   showScreen("letter");
 }
@@ -333,6 +338,20 @@ async function typeFinalMessage() {
     await new Promise((resolve) => window.setTimeout(resolve, 220));
   }
 }
+
+function shareReveal() {
+  if (navigator.share) {
+    navigator.share({
+      title: "See this surprise ❤️",
+      url: window.location.href,
+    });
+    return;
+  }
+
+  alert(`Copy this link: ${window.location.href}`);
+}
+
+window.shareReveal = shareReveal;
 
 startButton.addEventListener("click", () => {
   startButton.disabled = true;
