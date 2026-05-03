@@ -329,7 +329,7 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && url.pathname === "/admin") {
-      await serveFile(response, "/index.html");
+      await serveFile(response, "/admin.html");
       return;
     }
 

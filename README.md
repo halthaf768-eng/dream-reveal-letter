@@ -18,6 +18,8 @@ Dream Reveal Letter is a full-stack web application for creating personalized re
 - `/` opens the default public reveal experience.
 - `/reveal/{slug}` opens a saved recipient reveal page without the admin form.
 
+The admin UI lives in `admin.html` and `admin.js`. The public reveal UI lives in `index.html` and `script.js`, so recipient links never render the admin form or upload controls.
+
 ## Supabase Setup
 
 1. Create a Supabase project.

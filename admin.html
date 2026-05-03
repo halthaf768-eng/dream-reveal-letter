@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dream Reveal Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app admin-app" aria-live="polite">
+      <section class="screen setup-screen is-active" data-screen="setup">
+        <form class="quick-form" id="quickForm">
+          <p class="eyebrow">Admin Panel</p>
+          <h1>Customize this dream reveal</h1>
+
+          <label class="message-label" for="letterMessageInput">
+            1. Dream Letter Message
+          </label>
+          <textarea id="letterMessageInput" autocomplete="off">My Love,
+
+I always knew this dream was waiting for you.
+Every late night, every small effort, and every silent prayer has brought you here.
+This result is proof that your heart never gave up.
+Today your dream begins to glow, and I am so proud of you.
+
+Tumhari ❤️</textarea>
+
+          <label class="message-label" for="dreamPhotoInput">
+            2. Scratch Dream Photo
+          </label>
+          <div class="upload-box">
+            <input id="dreamPhotoInput" type="file" accept="image/*" />
+            <p id="photoStatus">Default dream photo is selected.</p>
+          </div>
+
+          <label class="message-label" for="musicInput">
+            3. Background Music
+          </label>
+          <div class="upload-box">
+            <input id="musicInput" type="file" accept="audio/*" />
+            <p id="musicStatus">Default romantic music is selected.</p>
+          </div>
+
+          <label class="message-label" for="finalMessageInput">
+            4. Final Message / Instructions
+          </label>
+          <textarea id="finalMessageInput" autocomplete="off">I knew you would make it.
+This is only the beginning.
+I’m so proud of you.
+I’ll always be with you ❤️</textarea>
+
+          <div class="admin-actions">
+            <button class="primary-button" type="submit">
+              <span>🔗</span>
+              <span>Generate Link</span>
+            </button>
+          </div>
+
+          <div class="link-box" id="linkBox" hidden>
+            <p>Your reveal link is ready:</p>
+            <a id="generatedLink" href="#" target="_blank" rel="noreferrer"></a>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script src="/admin.js"></script>
+  </body>
+</html>

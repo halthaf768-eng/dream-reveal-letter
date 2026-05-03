@@ -386,6 +386,42 @@ textarea {
   text-align: center;
 }
 
+.loader-screen,
+.error-screen {
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.78), transparent 30%),
+    linear-gradient(145deg, #ffe4e7, #fff5ee 48%, #f7c7d8);
+  justify-items: center;
+  text-align: center;
+}
+
+.loader-card {
+  animation: softEnter 720ms ease both;
+  color: var(--ink);
+  display: grid;
+  gap: 12px;
+  max-width: min(86vw, 420px);
+}
+
+.loader-icon {
+  font-size: clamp(3rem, 16vw, 5.5rem);
+  line-height: 1;
+  margin: 0;
+}
+
+.loader-card h1 {
+  font-family: var(--serif);
+  font-size: clamp(2.1rem, 9vw, 4rem);
+  line-height: 1.02;
+  margin: 0;
+}
+
+.loader-card p:not(.loader-icon) {
+  color: rgba(58, 28, 33, 0.74);
+  font-weight: 600;
+  margin: 0;
+}
+
 .countdown-shell {
   margin: auto;
 }

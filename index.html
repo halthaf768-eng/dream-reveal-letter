@@ -7,61 +7,20 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="app" aria-live="polite">
-      <section class="screen setup-screen is-active" data-screen="setup">
-        <form class="quick-form" id="quickForm">
-          <p class="eyebrow">Admin Panel</p>
-          <h1>Customize this dream reveal</h1>
+    <main class="app public-app" aria-live="polite">
+      <section class="screen loader-screen is-active" data-screen="loader">
+        <div class="loader-card">
+          <p class="loader-icon">✨</p>
+          <h1>Preparing your surprise…</h1>
+        </div>
+      </section>
 
-          <label class="message-label" for="letterMessageInput">
-            1. Dream Letter Message
-          </label>
-          <textarea id="letterMessageInput" autocomplete="off">My Love,
-
-I always knew this dream was waiting for you.
-Every late night, every small effort, and every silent prayer has brought you here.
-This result is proof that your heart never gave up.
-Today your dream begins to glow, and I am so proud of you.
-
-Tumhari ❤️</textarea>
-
-          <label class="message-label" for="dreamPhotoInput">
-            2. Scratch Dream Photo
-          </label>
-          <div class="upload-box">
-            <input id="dreamPhotoInput" type="file" accept="image/*" />
-            <p id="photoStatus">Default dream photo is selected.</p>
-          </div>
-
-          <label class="message-label" for="finalMessageInput">
-            3. Background Music
-          </label>
-          <div class="upload-box">
-            <input id="musicInput" type="file" accept="audio/*" />
-            <p id="musicStatus">Default romantic music is selected.</p>
-          </div>
-
-          <label class="message-label" for="finalMessageInput">
-            4. Final Message / Instructions
-          </label>
-          <textarea id="finalMessageInput" autocomplete="off">I knew you would make it.
-This is only the beginning.
-I’m so proud of you.
-I’ll always be with you ❤️</textarea>
-
-          <div class="admin-actions">
-            <button class="primary-button" type="submit">
-              <span>🔗</span>
-              <span>Generate Link</span>
-            </button>
-            <button class="secondary-button" id="previewButton" type="button">Preview Reveal</button>
-          </div>
-
-          <div class="link-box" id="linkBox" hidden>
-            <p>Your reveal link is ready:</p>
-            <a id="generatedLink" href="#" target="_blank" rel="noreferrer"></a>
-          </div>
-        </form>
+      <section class="screen error-screen" data-screen="error" aria-hidden="true">
+        <div class="loader-card">
+          <p class="loader-icon">💔</p>
+          <h1 id="errorTitle">Reveal not found</h1>
+          <p id="errorMessage">This surprise link is unavailable.</p>
+        </div>
       </section>
 
       <section class="screen letter-screen" data-screen="letter" aria-hidden="true">
@@ -97,7 +56,7 @@ I’ll always be with you ❤️</textarea>
         </div>
 
         <div class="scratch-card soft-enter" id="scratchCard">
-          <img src="/assets/future-dream.jpg" alt="Dream future reveal" id="dreamImage" />
+          <img src="/assets/future-dream.jpg" alt="Dream future reveal" id="dreamImage" loading="lazy" />
           <canvas id="scratchCanvas" aria-label="Scratch card layer"></canvas>
           <div class="scratch-shine" aria-hidden="true"></div>
         </div>
@@ -114,7 +73,7 @@ I’ll always be with you ❤️</textarea>
       </section>
     </main>
 
-    <audio id="bgMusic" src="/assets/bg-music.mp3" preload="auto" loop></audio>
+    <audio id="bgMusic" src="/assets/bg-music.mp3" preload="none" loop></audio>
     <script src="/script.js"></script>
   </body>
 </html>

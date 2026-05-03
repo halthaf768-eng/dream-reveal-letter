@@ -1,5 +1,6 @@
 const screens = {
-  setup: document.querySelector('[data-screen="setup"]'),
+  loader: document.querySelector('[data-screen="loader"]'),
+  error: document.querySelector('[data-screen="error"]'),
   letter: document.querySelector('[data-screen="letter"]'),
   countdown: document.querySelector('[data-screen="countdown"]'),
   scratch: document.querySelector('[data-screen="scratch"]'),
@@ -23,16 +24,6 @@ I’m so proud of you.
 I’ll always be with you ❤️`,
 };
 
-const quickForm = document.getElementById("quickForm");
-const letterMessageInput = document.getElementById("letterMessageInput");
-const dreamPhotoInput = document.getElementById("dreamPhotoInput");
-const photoStatus = document.getElementById("photoStatus");
-const musicInput = document.getElementById("musicInput");
-const musicStatus = document.getElementById("musicStatus");
-const finalMessageInput = document.getElementById("finalMessageInput");
-const previewButton = document.getElementById("previewButton");
-const linkBox = document.getElementById("linkBox");
-const generatedLink = document.getElementById("generatedLink");
 const finalMessage = document.querySelector(".final-message");
 const letterName = document.getElementById("letterName");
 const letterMessage = document.getElementById("letterMessage");
@@ -43,28 +34,39 @@ const card = document.getElementById("scratchCard");
 const dreamImage = document.getElementById("dreamImage");
 const canvas = document.getElementById("scratchCanvas");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
+const errorTitle = document.getElementById("errorTitle");
+const errorMessage = document.getElementById("errorMessage");
 
-let uploadedDreamPhoto = "";
-let uploadedMusic = "";
+let revealData = defaultReveal;
 let isScratching = false;
 let revealDone = false;
 let finalTyped = false;
 let lastPoint = null;
 
 function clean(value, fallback) {
-  return value.trim() || fallback;
+  return String(value || "").trim() || fallback;
 }
 
-function buildLetter() {
-  const fallback = `My Love,
+function showScreen(name) {
+  Object.entries(screens).forEach(([screenName, element]) => {
+    const active = screenName === name;
+    element.classList.toggle("is-active", active);
+    element.setAttribute("aria-hidden", String(!active));
+  });
 
-I always knew this dream was waiting for you.
-Every late night, every small effort, and every silent prayer has brought you here.
-This result is proof that your heart never gave up.
-Today your dream begins to glow, and I am so proud of you.
+  if (name === "final") {
+    typeFinalMessage();
+  }
+}
 
-Tumhari ❤️`;
-  const rawMessage = clean(letterMessageInput.value, fallback);
+function showError(title, message) {
+  errorTitle.textContent = title;
+  errorMessage.textContent = message;
+  showScreen("error");
+}
+
+function buildLetter(message) {
+  const rawMessage = clean(message, defaultReveal.letterMessage);
   const lines = rawMessage
     .split(/\n+/)
     .map((line) => line.trim())
@@ -83,22 +85,18 @@ Tumhari ❤️`;
   });
 }
 
-function applyDreamPhoto() {
-  const photo = uploadedDreamPhoto || "/assets/future-dream.jpg";
+function applyDreamPhoto(photoUrl) {
+  const photo = photoUrl || "/assets/future-dream.jpg";
   dreamImage.src = photo;
   screens.final.style.backgroundImage = `linear-gradient(rgba(39, 15, 24, 0.4), rgba(39, 15, 24, 0.66)), url("${photo}")`;
 }
 
-function applyMusic() {
-  music.src = uploadedMusic || "/assets/bg-music.mp3";
+function applyMusic(musicUrl) {
+  music.src = musicUrl || "/assets/bg-music.mp3";
 }
 
-function buildFinalMessage() {
-  const fallback = `I knew you would make it.
-This is only the beginning.
-I’m so proud of you.
-I’ll always be with you ❤️`;
-  const lines = clean(finalMessageInput.value, fallback)
+function buildFinalMessage(message) {
+  const lines = clean(message, defaultReveal.finalMessage)
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean);
@@ -113,106 +111,63 @@ I’ll always be with you ❤️`;
   finalTyped = false;
 }
 
-function buildRevealData() {
-  return {
-    letterMessage: clean(letterMessageInput.value, ""),
-    dreamPhoto: uploadedDreamPhoto,
-    music: uploadedMusic,
-    finalMessage: clean(finalMessageInput.value, ""),
-  };
-}
-
 function applyRevealData(data) {
-  letterMessageInput.value = data.letterMessage || letterMessageInput.value;
-  finalMessageInput.value = data.finalMessage || finalMessageInput.value;
-  uploadedDreamPhoto = data.dreamPhoto || "";
-  uploadedMusic = data.music || "";
-  photoStatus.textContent = uploadedDreamPhoto ? "Saved dream photo is loaded." : "Default dream photo is selected.";
-  musicStatus.textContent = uploadedMusic ? "Saved music is loaded." : "Default romantic music is selected.";
-  buildLetter();
-  buildFinalMessage();
-  applyDreamPhoto();
-  applyMusic();
+  revealData = {
+    ...defaultReveal,
+    ...data,
+  };
+  buildLetter(revealData.letterMessage);
+  buildFinalMessage(revealData.finalMessage);
+  applyDreamPhoto(revealData.dreamPhoto || revealData.futureImageUrl);
+  applyMusic(revealData.music || revealData.backgroundMusicUrl);
 }
 
-function applyCurrentAdminData() {
-  buildLetter();
-  buildFinalMessage();
-  applyDreamPhoto();
-  applyMusic();
-}
-
-async function createRevealLink() {
-  const response = await fetch("/api/reveals", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(buildRevealData()),
-  });
-
+async function loadRevealBySlug(slug) {
+  const response = await fetch(`/api/reveals/${slug}`);
+  if (response.status === 404) {
+    throw new Error("Reveal not found");
+  }
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    const message = [errorData.error, errorData.details].filter(Boolean).join(" - ");
-    throw new Error(message || `Save failed with HTTP ${response.status}`);
+    throw new Error(errorData.error || "Could not load this reveal.");
   }
 
-  const data = await response.json();
-  return new URL(data.url, window.location.origin).href;
+  return response.json();
 }
 
-async function loadSharedReveal() {
-  const match = window.location.pathname.match(/^\/reveal\/([a-zA-Z0-9_-]+)$/);
-  if (!match) return false;
+async function initRevealPage() {
+  showScreen("loader");
 
-  const response = await fetch(`/api/reveals/${match[1]}`);
-  if (!response.ok) return false;
+  const match = window.location.pathname.match(/^\/reveal\/([^/]+)$/);
+  if (!match) {
+    applyRevealData(defaultReveal);
+    showScreen("letter");
+    return;
+  }
 
-  const data = await response.json();
-  applyRevealData(data);
-  return true;
+  try {
+    const data = await loadRevealBySlug(match[1]);
+    applyRevealData(data);
+    showScreen("letter");
+  } catch (error) {
+    showError("Reveal not found", error.message || "This surprise link is unavailable.");
+  }
 }
 
-function removeAdminPanel() {
-  screens.setup?.remove();
-  delete screens.setup;
-}
-
-function startPublicReveal() {
-  removeAdminPanel();
+function initHomePage() {
+  applyRevealData(defaultReveal);
   showScreen("letter");
 }
 
-async function bootApp() {
-  if (window.location.pathname === "/admin") {
-    showScreen("setup");
+function bootApp() {
+  const path = window.location.pathname;
+
+  if (path.startsWith("/reveal/")) {
+    initRevealPage();
     return;
   }
 
-  if (window.location.pathname === "/") {
-    applyRevealData(defaultReveal);
-    startPublicReveal();
-    return;
-  }
-
-  const loaded = await loadSharedReveal();
-  if (loaded) {
-    startPublicReveal();
-    return;
-  }
-
-  applyRevealData(defaultReveal);
-  startPublicReveal();
-}
-
-function showScreen(name) {
-  Object.entries(screens).forEach(([screenName, element]) => {
-    const active = screenName === name;
-    element.classList.toggle("is-active", active);
-    element.setAttribute("aria-hidden", String(!active));
-  });
-
-  if (name === "final") {
-    typeFinalMessage();
-  }
+  initHomePage();
 }
 
 function playMusic() {
@@ -383,60 +338,6 @@ startButton.addEventListener("click", () => {
   startButton.disabled = true;
   playMusic();
   runCountdown();
-});
-
-quickForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  applyCurrentAdminData();
-  linkBox.hidden = false;
-  generatedLink.removeAttribute("href");
-  generatedLink.textContent = "Generating link...";
-
-  try {
-    const url = await createRevealLink();
-    generatedLink.href = url;
-    generatedLink.textContent = url;
-  } catch (error) {
-    console.error("[Generate link] Save failed:", error);
-    generatedLink.textContent = `Could not save the reveal: ${error.message}`;
-  }
-});
-
-previewButton.addEventListener("click", () => {
-  applyCurrentAdminData();
-  showScreen("letter");
-});
-
-dreamPhotoInput.addEventListener("change", () => {
-  const [file] = dreamPhotoInput.files;
-  if (!file) {
-    uploadedDreamPhoto = "";
-    photoStatus.textContent = "Default dream photo is selected.";
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.addEventListener("load", () => {
-    uploadedDreamPhoto = String(reader.result);
-    photoStatus.textContent = `${file.name} is ready for the scratch reveal.`;
-  });
-  reader.readAsDataURL(file);
-});
-
-musicInput.addEventListener("change", () => {
-  const [file] = musicInput.files;
-  if (!file) {
-    uploadedMusic = "";
-    musicStatus.textContent = "Default romantic music is selected.";
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.addEventListener("load", () => {
-    uploadedMusic = String(reader.result);
-    musicStatus.textContent = `${file.name} is ready for the reveal music.`;
-  });
-  reader.readAsDataURL(file);
 });
 
 canvas.addEventListener("pointerdown", startScratch);
