@@ -150,7 +150,9 @@ async function createRevealLink() {
   });
 
   if (!response.ok) {
-    throw new Error("The local backend is not running.");
+    const errorData = await response.json().catch(() => ({}));
+    const message = [errorData.error, errorData.details].filter(Boolean).join(" - ");
+    throw new Error(message || `Save failed with HTTP ${response.status}`);
   }
 
   const data = await response.json();
@@ -395,7 +397,8 @@ quickForm.addEventListener("submit", async (event) => {
     generatedLink.href = url;
     generatedLink.textContent = url;
   } catch (error) {
-    generatedLink.textContent = "Could not save the reveal. Check backend and Supabase environment variables.";
+    console.error("[Generate link] Save failed:", error);
+    generatedLink.textContent = `Could not save the reveal: ${error.message}`;
   }
 });
 
