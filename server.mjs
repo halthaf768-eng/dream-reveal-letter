@@ -9,6 +9,7 @@ const root = fileURLToPath(new URL(".", import.meta.url));
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "0.0.0.0";
 const maxBodyBytes = 24 * 1024 * 1024;
+const revealsTable = "reveals";
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -30,6 +31,12 @@ function getSupabase() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl) {
+      console.error("[Supabase config] Missing SUPABASE_URL");
+    }
+    if (!serviceRoleKey) {
+      console.error("[Supabase config] Missing SUPABASE_SERVICE_ROLE_KEY");
+    }
     throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
   }
 
@@ -94,49 +101,80 @@ function pickValue(payload, keys, fallback = "") {
   return fallback;
 }
 
+function parseMessagePayload(message) {
+  if (!message) return {};
+  try {
+    return JSON.parse(message);
+  } catch {
+    return {
+      letterMessage: String(message),
+      finalMessage: "",
+      music: "",
+      destinationResultData: {},
+    };
+  }
+}
+
 function cleanRevealPayload(payload, existing = {}) {
-  const letterMessage = String(pickValue(payload, ["letterMessage", "letter_message"], existing.letter_message || ""));
-  const finalMessage = String(pickValue(payload, ["finalMessage", "final_message"], existing.final_message || ""));
+  const existingPayload = parseMessagePayload(existing.message);
+  const letterMessage = String(pickValue(payload, ["letterMessage", "letter_message"], existingPayload.letterMessage || ""));
+  const finalMessage = String(pickValue(payload, ["finalMessage", "final_message"], existingPayload.finalMessage || ""));
   const futureImageUrl = String(
-    pickValue(payload, ["dreamPhoto", "futureImageUrl", "future_image_url"], existing.future_image_url || ""),
+    pickValue(payload, ["dreamPhoto", "futureImageUrl", "future_image_url", "future_image"], existing.future_image || ""),
   );
   const backgroundMusicUrl = String(
-    pickValue(payload, ["music", "backgroundMusicUrl", "background_music_url"], existing.background_music_url || ""),
+    pickValue(payload, ["music", "backgroundMusicUrl", "background_music_url"], existingPayload.music || ""),
   );
+  const destinationResultData = pickValue(
+    payload,
+    ["destinationResultData", "destination_result_data"],
+    existingPayload.destinationResultData || {},
+  );
+  const name = String(pickValue(payload, ["customerName", "customer_name", "name"], existing.name || splitLetterMessage(letterMessage)));
+  const destination = String(
+    pickValue(
+      payload,
+      ["destination", "destinationResult", "destination_result"],
+      existing.destination || destinationResultData.destination || destinationResultData.result || finalMessage,
+    ),
+  );
+  const email = String(pickValue(payload, ["email", "customerEmail", "customer_email"], existing.email || ""));
+
+  const messagePayload = {
+    letterMessage,
+    finalMessage,
+    music: backgroundMusicUrl,
+    backgroundMusicUrl,
+    destinationResultData,
+  };
 
   return {
     slug: existing.slug || String(payload.slug || createSlug()),
-    customer_name: String(
-      pickValue(payload, ["customerName", "customer_name"], existing.customer_name || splitLetterMessage(letterMessage)),
-    ),
-    customer_details: pickValue(payload, ["customerDetails", "customer_details"], existing.customer_details || {}),
-    letter_message: letterMessage,
-    final_message: finalMessage,
-    future_image_url: futureImageUrl,
-    background_music_url: backgroundMusicUrl,
-    destination_result_data: pickValue(
-      payload,
-      ["destinationResultData", "destination_result_data"],
-      existing.destination_result_data || {},
-    ),
-    admin_created: pickValue(payload, ["adminCreated", "admin_created"], existing.admin_created ?? true),
+    name,
+    message: JSON.stringify(messagePayload),
+    future_image: futureImageUrl,
+    destination,
+    email,
   };
 }
 
 function toClientReveal(row) {
+  const messagePayload = parseMessagePayload(row.message);
   return {
     id: row.id,
     slug: row.slug,
-    customerName: row.customer_name,
-    customerDetails: row.customer_details || {},
-    letterMessage: row.letter_message || "",
-    dreamPhoto: row.future_image_url || "",
-    futureImageUrl: row.future_image_url || "",
-    music: row.background_music_url || "",
-    backgroundMusicUrl: row.background_music_url || "",
-    finalMessage: row.final_message || "",
-    destinationResultData: row.destination_result_data || {},
-    adminCreated: row.admin_created,
+    customerName: row.name || "",
+    customerDetails: {},
+    letterMessage: messagePayload.letterMessage || row.message || "",
+    dreamPhoto: row.future_image || "",
+    futureImageUrl: row.future_image || "",
+    music: messagePayload.music || messagePayload.backgroundMusicUrl || "",
+    backgroundMusicUrl: messagePayload.backgroundMusicUrl || messagePayload.music || "",
+    finalMessage: messagePayload.finalMessage || row.destination || "",
+    destination: row.destination || "",
+    destinationResultData: messagePayload.destinationResultData || {},
+    email: row.email || "",
+    adminCreated: true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -144,7 +182,7 @@ function toClientReveal(row) {
 
 async function getRevealBySlug(slug) {
   const { data, error } = await getSupabase()
-    .from("reveal_entries")
+    .from(revealsTable)
     .select("*")
     .eq("slug", slug)
     .maybeSingle();
@@ -176,10 +214,20 @@ async function serveFile(response, pathname) {
 async function handleApi(request, response, url) {
   if (request.method === "POST" && url.pathname === "/api/reveals") {
     const payload = parseJsonBody(await readBody(request));
+    console.error("[Create reveal] Request body:", payload);
     const reveal = cleanRevealPayload(payload);
-    const { data, error } = await getSupabase().from("reveal_entries").insert(reveal).select("*").single();
+    const { data, error } = await getSupabase().from(revealsTable).insert(reveal).select("*").single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[Create reveal] Supabase insert error:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        insertObject: reveal,
+      });
+      throw error;
+    }
 
     sendJson(response, 201, {
       ...toClientReveal(data),
@@ -190,8 +238,8 @@ async function handleApi(request, response, url) {
 
   if (request.method === "GET" && url.pathname === "/api/reveals") {
     const { data, error } = await getSupabase()
-      .from("reveal_entries")
-      .select("id, slug, customer_name, letter_message, future_image_url, destination_result_data, admin_created, created_at, updated_at")
+      .from(revealsTable)
+      .select("id, slug, name, message, future_image, destination, email, created_at, updated_at")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -228,7 +276,7 @@ async function handleApi(request, response, url) {
       const payload = parseJsonBody(await readBody(request));
       const reveal = cleanRevealPayload(payload, existing);
       const { data, error } = await getSupabase()
-        .from("reveal_entries")
+        .from(revealsTable)
         .update(reveal)
         .eq("slug", slug)
         .select("*")
@@ -241,7 +289,7 @@ async function handleApi(request, response, url) {
     }
 
     if (request.method === "DELETE") {
-      const { error } = await getSupabase().from("reveal_entries").delete().eq("slug", slug);
+      const { error } = await getSupabase().from(revealsTable).delete().eq("slug", slug);
       if (error) throw error;
 
       sendJson(response, 200, { ok: true });
@@ -294,9 +342,18 @@ const server = createServer(async (request, response) => {
     response.end("Method not allowed");
   } catch (error) {
     const status = error.status || 500;
+    console.error("[Server error]", {
+      path: url.pathname,
+      method: request.method,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+      stack: error.stack,
+    });
     sendJson(response, status, {
-      error: status === 500 ? "Server error." : error.message,
-      detail: status === 500 ? error.message : undefined,
+      error: error.message || "Server error.",
+      details: error.details || error.hint || error.code || error.stack || "",
     });
   }
 });
