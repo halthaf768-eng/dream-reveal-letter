@@ -25,11 +25,25 @@ function buildRevealData() {
 }
 
 async function createRevealLink() {
-  const response = await fetch("/api/reveals", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(buildRevealData()),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+
+  let response;
+  try {
+    response = await fetch("/api/reveals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildRevealData()),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("The backend did not respond in time. Check Render logs and Supabase environment variables.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

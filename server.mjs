@@ -49,6 +49,27 @@ function getSupabase() {
   return supabaseClient;
 }
 
+function getSupabaseConfigError() {
+  const missing = [];
+
+  if (!process.env.SUPABASE_URL) {
+    console.error("[Supabase config] Missing SUPABASE_URL");
+    missing.push("SUPABASE_URL");
+  }
+
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("[Supabase config] Missing SUPABASE_SERVICE_ROLE_KEY");
+    missing.push("SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  if (!missing.length) return null;
+
+  return {
+    error: "Supabase is not configured.",
+    details: `Missing Render environment variable(s): ${missing.join(", ")}`,
+  };
+}
+
 function sendJson(response, status, data) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(data));
@@ -215,6 +236,13 @@ async function handleApi(request, response, url) {
   if (request.method === "POST" && url.pathname === "/api/reveals") {
     const payload = parseJsonBody(await readBody(request));
     console.error("[Create reveal] Request body:", payload);
+
+    const configError = getSupabaseConfigError();
+    if (configError) {
+      sendJson(response, 500, configError);
+      return true;
+    }
+
     const reveal = cleanRevealPayload(payload);
     const { data, error } = await getSupabase().from(revealsTable).insert(reveal).select("*").single();
 
@@ -226,7 +254,11 @@ async function handleApi(request, response, url) {
         code: error.code,
         insertObject: reveal,
       });
-      throw error;
+      sendJson(response, 500, {
+        error: "Supabase insert failed.",
+        details: [error.message, error.details, error.hint, error.code].filter(Boolean).join(" "),
+      });
+      return true;
     }
 
     sendJson(response, 201, {
